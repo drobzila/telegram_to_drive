@@ -1,55 +1,83 @@
 import os
 from telethon import TelegramClient
-from googleapiclient.discovery import build
-from google.oauth2.credentials import Credentials
-from googleapiclient.http import MediaFileUpload
-import json
+from moviepy.editor import VideoFileClip
+from pydrive.auth import GoogleAuth
+from pydrive.drive import GoogleDrive
 
-# Telegram
+# =============================
+# إعدادات Telegram
+# =============================
 api_id = int(os.getenv("TELEGRAM_API_ID"))
 api_hash = os.getenv("TELEGRAM_API_HASH")
-channel = os.getenv("TELEGRAM_CHANNEL")
-session_file = 'telegram.session'
+session_file = "telegram.session"
+channel_username = os.getenv("TELEGRAM_CHANNEL")  # معرف القناة أو اسم المستخدم
 
+# =============================
+# إعدادات Google Drive
+# =============================
+gdrive_folder_id = os.getenv("GOOGLE_FOLDER")  # مجلد الرفع
+log_file = "uploaded_log.txt"
+
+# =============================
+# المصادقة على Google Drive
+# =============================
+gauth = GoogleAuth()
+gauth.LoadCredentialsFile("mycreds.txt")  # يجب حفظ التوكن مرة واحدة يدويا
+if gauth.credentials is None:
+    gauth.LocalWebserverAuth()
+elif gauth.access_token_expired:
+    gauth.Refresh()
+else:
+    gauth.Authorize()
+gauth.SaveCredentialsFile("mycreds.txt")
+drive = GoogleDrive(gauth)
+
+# =============================
+# تحميل سجل الملفات السابقة
+# =============================
+if os.path.exists(log_file):
+    with open(log_file, "r") as f:
+        uploaded_files = set(f.read().splitlines())
+else:
+    uploaded_files = set()
+
+# =============================
+# دالة رفع الفيديو إلى Drive
+# =============================
+def upload_to_drive(file_path, file_name):
+    gfile = drive.CreateFile({"parents": [{"id": gdrive_folder_id}], "title": file_name})
+    gfile.SetContentFile(file_path)
+    gfile.Upload()
+    print(f"Uploaded: {file_name}")
+    uploaded_files.add(file_name)
+    with open(log_file, "a") as f:
+        f.write(file_name + "\n")
+
+# =============================
+# تنفيذ Telegram Client
+# =============================
 client = TelegramClient(session_file, api_id, api_hash)
 
-# Google Drive
-CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
-CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
-REFRESH_TOKEN = os.getenv("GOOGLE_REFRESH_TOKEN")
-FOLDER_ID = os.getenv("GOOGLE_FOLDER_ID")
-
-creds = Credentials(
-    None,
-    refresh_token=REFRESH_TOKEN,
-    client_id=CLIENT_ID,
-    client_secret=CLIENT_SECRET,
-    token_uri="https://oauth2.googleapis.com/token"
-)
-drive_service = build('drive', 'v3', credentials=creds)
-
-# سجل لتجنب التكرار
-LOG_FILE = 'uploaded_log.json'
-if os.path.exists(LOG_FILE):
-    with open(LOG_FILE, 'r') as f:
-        uploaded = set(json.load(f))
-else:
-    uploaded = set()
-
 async def main():
-    channel_entity = await client.get_entity(channel)
-    async for message in client.iter_messages(channel_entity, limit=5):  # آخر 5 رسائل للتجربة
-        if message.media and message.id not in uploaded:
-            filename = await message.download_media()
-            file_metadata = {'name': os.path.basename(filename), 'parents': [FOLDER_ID]}
-            media = MediaFileUpload(filename)
-            drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
-            uploaded.add(message.id)
-            print(f"Uploaded: {filename}")
+    await client.start()
+    channel = await client.get_entity(channel_username)
 
-    # حفظ سجل التكرار
-    with open(LOG_FILE, 'w') as f:
-        json.dump(list(uploaded), f)
+    async for message in client.iter_messages(channel, limit=50):
+        if message.video:
+            file_name = message.file.name
+            if file_name in uploaded_files:
+                print(f"Already uploaded: {file_name}")
+                continue
+
+            # تحميل مؤقت للتحقق من المدة
+            temp_path = await message.download_media(file="temp_video.mp4")
+            clip = VideoFileClip(temp_path)
+            if clip.duration < 60:  # أقل من دقيقة
+                upload_to_drive(temp_path, file_name)
+            else:
+                print(f"Skipping (long video): {file_name}")
+            clip.close()
+            os.remove(temp_path)
 
 with client:
     client.loop.run_until_complete(main())
