@@ -1,9 +1,9 @@
 import os
-import json
 from telethon import TelegramClient
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
 from googleapiclient.http import MediaFileUpload
+import json
 
 # Telegram
 api_id = int(os.getenv("TELEGRAM_API_ID"))
@@ -28,7 +28,7 @@ creds = Credentials(
 )
 drive_service = build('drive', 'v3', credentials=creds)
 
-# سجل الفيديوهات التي تم رفعها لتجنب التكرار
+# سجل لتجنب التكرار
 LOG_FILE = 'uploaded_log.json'
 if os.path.exists(LOG_FILE):
     with open(LOG_FILE, 'r') as f:
@@ -38,30 +38,18 @@ else:
 
 async def main():
     channel_entity = await client.get_entity(channel)
-    async for message in client.iter_messages(channel_entity, limit=20):  # آخر 20 رسالة
-        if message.media and message.id not in uploaded:
-            try:
-                filename = await message.download_media()
-                print(f"⬇️ Downloaded: {filename}")
+    async for message in client.iter_messages(channel_entity, limit=20):  # ثابت 20
+        if message.video and message.id not in uploaded:  # ✅ فيديو فقط
+            filename = await message.download_media()
+            file_metadata = {'name': os.path.basename(filename), 'parents': [FOLDER_ID]}
+            media = MediaFileUpload(filename)
+            drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+            uploaded.add(message.id)
+            print(f"Uploaded video: {filename}")
 
-                file_metadata = {'name': os.path.basename(filename), 'parents': [FOLDER_ID]}
-                media = MediaFileUpload(filename)
-
-                drive_service.files().create(
-                    body=file_metadata,
-                    media_body=media,
-                    fields='id'
-                ).execute()
-
-                uploaded.add(message.id)
-                print(f"✅ Uploaded: {filename}")
-
-                # تحديث السجل مباشرة
-                with open(LOG_FILE, 'w') as f:
-                    json.dump(list(uploaded), f)
-
-            except Exception as e:
-                print(f"❌ Error with {message.id}: {e}")
+    # حفظ السجل
+    with open(LOG_FILE, 'w') as f:
+        json.dump(list(uploaded), f)
 
 with client:
     client.loop.run_until_complete(main())
