@@ -4,7 +4,10 @@ import subprocess
 from telethon import TelegramClient
 from pydrive2.auth import GoogleAuth
 from pydrive2.drive import GoogleDrive
-from oauth2client.client import GoogleCredentials
+from oauth2client.client import AccessTokenCredentials
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+import requests
 from datetime import datetime
 
 # =============================
@@ -26,20 +29,25 @@ max_uploads = 20  # عدد الفيديوهات المطلوب رفعها
 # مصادقة Google Drive عبر Secrets
 # =============================
 def auth_gdrive():
-    creds_dict = {
+    # استبدال refresh_token ب access_token جديد
+    data = {
         "client_id": os.getenv("GOOGLE_CLIENT_ID"),
         "client_secret": os.getenv("GOOGLE_CLIENT_SECRET"),
         "refresh_token": os.getenv("GOOGLE_REFRESH_TOKEN"),
-        "type": "authorized_user"
+        "grant_type": "refresh_token"
     }
-    creds_json = json.dumps(creds_dict)
-    credentials = GoogleCredentials.from_json(creds_json)
+    r = requests.post("https://oauth2.googleapis.com/token", data=data)
+    if r.status_code != 200:
+        raise Exception(f"Google OAuth Error: {r.text}")
+    
+    access_token = r.json()["access_token"]
+
+    # تمرير التوكن إلى PyDrive2
+    creds = AccessTokenCredentials(access_token, "my-user-agent/1.0")
     gauth = GoogleAuth()
-    gauth.credentials = credentials
+    gauth.credentials = creds
     return GoogleDrive(gauth)
-
-drive = auth_gdrive()
-
+    
 # =============================
 # تحميل سجل الملفات السابقة
 # =============================
