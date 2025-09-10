@@ -18,6 +18,7 @@ channel_username = os.getenv("TELEGRAM_CHANNEL")  # معرف القناة أو �
 # =============================
 gdrive_folder_id = os.getenv("GOOGLE_FOLDER")  # مجلد الرفع
 log_file = "uploaded_log.txt"
+max_uploads = 20  # عدد الفيديوهات المطلوب رفعها
 
 # =============================
 # المصادقة على Google Drive
@@ -63,7 +64,11 @@ async def main():
     await client.start()
     channel = await client.get_entity(channel_username)
 
-    async for message in client.iter_messages(channel, limit=50):
+    uploaded_count = 0
+    async for message in client.iter_messages(channel, limit=200):  # جلب 200 رسالة مثلاً
+        if uploaded_count >= max_uploads:
+            break
+
         if message.video:
             file_name = message.file.name or f"{message.id}.mp4"
             if file_name in uploaded_files:
@@ -77,6 +82,9 @@ async def main():
                 duration = clip.duration
                 if duration < 60:  # أقل من دقيقة
                     upload_to_drive(temp_path, file_name, duration)
+                    uploaded_count += 1
+                    if uploaded_count >= max_uploads:
+                        break
                 else:
                     print(f"Skipping (long video {duration:.1f}s): {file_name}")
                 clip.close()
@@ -85,6 +93,8 @@ async def main():
             finally:
                 if os.path.exists(temp_path):
                     os.remove(temp_path)
+
+    print(f"\n✅ تم رفع {uploaded_count} فيديو إلى Google Drive")
 
 with client:
     client.loop.run_until_complete(main())
