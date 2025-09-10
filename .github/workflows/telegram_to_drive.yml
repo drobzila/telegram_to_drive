@@ -1,34 +1,38 @@
-name: Video Length Checker
+name: Telegram to Google Drive
 
 on:
-  workflow_dispatch: # تشغيل يدوي
   schedule:
-    - cron: "0 12 * * *" # يوميًا على الساعة 12:00 UTC
+    - cron: "0 12 * * *"   # ⏰ كل يوم على الساعة 12:00 UTC (13:00 بتوقيت الجزائر)
+  workflow_dispatch:        # ⬅️ لتشغيله يدويًا من GitHub
 
 jobs:
-  check-video-lengths:
+  run-script:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout repository
+      - name: 📥 Checkout repo
         uses: actions/checkout@v3
 
-      - name: Set up Python
+      - name: 🐍 Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: 3.10
+          python-version: "3.10"
 
-      - name: Install dependencies
+      - name: 📦 Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pydrive2
+          pip install telethon pydrive2 moviepy
 
-      - name: Install FFmpeg
-        run: sudo apt-get install -y ffmpeg
-
-      - name: Run script to check video lengths
+      - name: ▶️ Run telegram_to_drive.py
         env:
+          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+          TELEGRAM_CHANNEL: ${{ secrets.TELEGRAM_CHANNEL }}
+          TELEGRAM_SESSION_PATH: "./sessions/telegram.session"
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
           GOOGLE_FOLDER_ID: ${{ secrets.GOOGLE_FOLDER_ID }}
-        run: python scripts/check_lengths.py
+        run: |
+          mkdir -p ./sessions
+          python telegram_to_drive.py
