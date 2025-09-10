@@ -21,7 +21,9 @@ jobs:
         run: echo "${{ secrets.TELEGRAM_SESSION }}" | base64 -d > telegram.session
 
       - name: Install dependencies
-        run: pip install telethon google-api-python-client google-auth-httplib2 google-auth-oauthlib
+        run: |
+          python -m pip install --upgrade pip
+          pip install telethon moviepy pydrive2
 
       - name: Run Telegram to Drive
         run: python telegram_to_drive.py
