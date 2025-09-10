@@ -2,15 +2,16 @@ name: Telegram to Google Drive
 
 on:
   schedule:
-    - cron: '0 12 * * *'  # كل يوم على الساعة 12:00 UTC
-  workflow_dispatch:
+    - cron: '0 12 * * *'   # ⏰ كل يوم على الساعة 12:00 UTC
+  workflow_dispatch:        # 🚀 تشغيل يدوي من GitHub
 
 jobs:
   telegram-upload:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -22,16 +23,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip setuptools wheel
-          # إزالة أي نسخة حديثة من moviepy
-          pip uninstall -y moviepy || true
-          # تثبيت النسخة المستقرة التي تدعم moviepy.editor
-          pip install moviepy==1.0.3
-          # تثبيت باقي المكتبات
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
-          echo "✅ التحقق من نسخة moviepy:"
-          pip show moviepy
-          pip list | grep moviepy
 
       - name: Run Telegram to Drive
         run: python telegram_to_drive.py
@@ -42,4 +35,4 @@ jobs:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
-          GOOGLE_FOLDER_ID: ${{ secrets.GOOGLE_FOLDER }}
+          GOOGLE_FOLDER_ID: ${{ secrets.GOOGLE_FOLDER_ID }}
