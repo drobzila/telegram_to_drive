@@ -16,7 +16,7 @@ channel_username = os.getenv("TELEGRAM_CHANNEL")  # معرف القناة أو �
 # =============================
 # إعدادات Google Drive
 # =============================
-gdrive_folder_id = os.getenv("GOOGLE_FOLDER")  # مجلد الرفع
+gdrive_folder_id = os.getenv("GOOGLE_FOLDER_ID")  # مجلد الرفع
 log_file = "uploaded_log.txt"
 max_uploads = 20  # عدد الفيديوهات المطلوب رفعها
 
