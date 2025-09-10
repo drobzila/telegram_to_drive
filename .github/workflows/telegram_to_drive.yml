@@ -1,0 +1,40 @@
+name: Telegram to Google Drive
+
+on:
+  schedule:
+    - cron: "0 16 * * *"   # كل يوم على 16:00 UTC (17:00 بتوقيت الجزائر)
+  workflow_dispatch:        # تشغيل يدوي أيضًا
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          pip install telethon google-api-python-client google-auth-httplib2 google-auth-oauthlib
+
+      - name: Prepare Telegram session
+        # في حال كان session مخزن مسبقًا في المستودع أو secrets
+        run: |
+          mkdir -p ./sessions
+          echo "${{ secrets.TELEGRAM_SESSION }}" > ./sessions/telegram.session
+
+      - name: Run script
+        env:
+          TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+          TELEGRAM_CHANNEL: ${{ secrets.TELEGRAM_CHANNEL }}
+          TELEGRAM_SESSION_PATH: ./sessions/telegram.session
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+          GOOGLE_FOLDER_ID: ${{ secrets.GOOGLE_FOLDER_ID }}
+        run: python telegram_to_drive.py
