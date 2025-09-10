@@ -44,8 +44,9 @@ async def main():
             file_metadata = {'name': os.path.basename(filename), 'parents': [FOLDER_ID]}
             media = MediaFileUpload(filename)
             drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
-            uploaded.add(message.id)
-            print(f"Uploaded video: {filename}")
+            
+            uploaded.add(message.id)  # ✅ نضيف ID الرسالة فقط
+            print(f"Uploaded video (msg_id={message.id}): {filename}")
 
     # حفظ السجل
     with open(LOG_FILE, 'w') as f:
