@@ -6,7 +6,7 @@ session_file = 'telegram.session'
 
 # قراءة بيانات API من متغيرات البيئة
 api_id = int(os.getenv("TELEGRAM_API_ID"))
-api_hash = os.getenv("TELEGRAM_API_HASH"))
+api_hash = os.getenv("TELEGRAM_API_HASH")
 
 client = TelegramClient(session_file, api_id, api_hash)
 
