@@ -1,0 +1,4 @@
+telethon
+moviepy
+pydrive2
+imageio[ffmpeg]
