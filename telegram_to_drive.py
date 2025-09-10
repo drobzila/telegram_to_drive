@@ -3,7 +3,6 @@ from telethon import TelegramClient
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
 from googleapiclient.http import MediaFileUpload
-from moviepy.editor import VideoFileClip
 import json
 
 # Telegram
@@ -39,25 +38,14 @@ else:
 
 async def main():
     channel_entity = await client.get_entity(channel)
-    count = 0
-    async for message in client.iter_messages(channel_entity, limit=50):  # آخر 50 رسالة
-        if message.video and message.id not in uploaded:
+    async for message in client.iter_messages(channel_entity, limit=5):  # آخر 5 رسائل للتجربة
+        if message.media and message.id not in uploaded:
             filename = await message.download_media()
-            clip = VideoFileClip(filename)
-
-            if clip.duration < 60:  # فقط الفيديوهات الأقل من دقيقة
-                file_metadata = {'name': os.path.basename(filename), 'parents': [FOLDER_ID]}
-                media = MediaFileUpload(filename)
-                drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
-                uploaded.add(message.id)
-                print(f"✅ Uploaded: {filename}")
-                count += 1
-
-            clip.close()
-            os.remove(filename)  # حذف الملف بعد الرفع
-
-            if count >= 20:  # حد أقصى 20 فيديو
-                break
+            file_metadata = {'name': os.path.basename(filename), 'parents': [FOLDER_ID]}
+            media = MediaFileUpload(filename)
+            drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+            uploaded.add(message.id)
+            print(f"Uploaded: {filename}")
 
     # حفظ سجل التكرار
     with open(LOG_FILE, 'w') as f:
