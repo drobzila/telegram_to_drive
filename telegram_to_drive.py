@@ -17,7 +17,7 @@ client = TelegramClient(session_file, api_id, api_hash)
 CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 REFRESH_TOKEN = os.getenv("GOOGLE_REFRESH_TOKEN")
-FOLDER_ID = os.getenv("GOOGLE_FOLDER")
+FOLDER_ID = os.getenv("GOOGLE_FOLDER_ID")
 
 creds = Credentials(
     None,
