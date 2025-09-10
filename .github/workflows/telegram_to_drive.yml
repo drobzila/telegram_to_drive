@@ -2,7 +2,8 @@ name: Telegram to Google Drive
 
 on:
   schedule:
-    - cron: '0 12 * * *'  # كل يوم على الساعة 12:00 UTC
+    - cron: '0 12 * * *'   # تشغيل كل يوم على الساعة 12:00 UTC
+    - cron: '0 18 * * *'   # تشغيل كل يوم على الساعة 18:00 UTC
   workflow_dispatch:
 
 jobs:
