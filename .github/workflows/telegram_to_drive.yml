@@ -32,4 +32,4 @@ jobs:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
-          GOOGLE_FOLDER: ${{ secrets.GOOGLE_FOLDER }}
+          GOOGLE_FOLDER_ID: ${{ secrets.GOOGLE_FOLDER }}
