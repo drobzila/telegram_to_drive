@@ -1,89 +1,57 @@
 import os
-import json
-import subprocess
 from telethon import TelegramClient
-from pydrive2.auth import GoogleAuth
-from pydrive2.drive import GoogleDrive
-from oauth2client.client import AccessTokenCredentials
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-import requests
-from datetime import datetime
+from moviepy.editor import VideoFileClip
+from pydrive.auth import GoogleAuth
+from pydrive.drive import GoogleDrive
 
 # =============================
 # إعدادات Telegram
 # =============================
 api_id = int(os.getenv("TELEGRAM_API_ID"))
 api_hash = os.getenv("TELEGRAM_API_HASH")
-session_file = "./sessions/telegram.session"
-channel_username = os.getenv("TELEGRAM_CHANNEL")  # معرف القناة أو @username
+session_file = "telegram.session"
+channel_username = os.getenv("TELEGRAM_CHANNEL")  # معرف القناة أو اسم المستخدم
 
 # =============================
 # إعدادات Google Drive
 # =============================
-gdrive_folder_id = os.getenv("GOOGLE_FOLDER_ID")  # مجلد الرفع
+gdrive_folder_id = os.getenv("GOOGLE_FOLDER")  # مجلد الرفع
 log_file = "uploaded_log.txt"
-max_uploads = 20  # عدد الفيديوهات المطلوب رفعها
 
 # =============================
-# مصادقة Google Drive عبر Secrets
+# المصادقة على Google Drive
 # =============================
-def auth_gdrive():
-    # استبدال refresh_token ب access_token جديد
-    data = {
-        "client_id": os.getenv("GOOGLE_CLIENT_ID"),
-        "client_secret": os.getenv("GOOGLE_CLIENT_SECRET"),
-        "refresh_token": os.getenv("GOOGLE_REFRESH_TOKEN"),
-        "grant_type": "refresh_token"
-    }
-    r = requests.post("https://oauth2.googleapis.com/token", data=data)
-    if r.status_code != 200:
-        raise Exception(f"Google OAuth Error: {r.text}")
-    
-    access_token = r.json()["access_token"]
+gauth = GoogleAuth()
+gauth.LoadCredentialsFile("mycreds.txt")  # يجب حفظ التوكن مرة واحدة يدويا
+if gauth.credentials is None:
+    gauth.LocalWebserverAuth()
+elif gauth.access_token_expired:
+    gauth.Refresh()
+else:
+    gauth.Authorize()
+gauth.SaveCredentialsFile("mycreds.txt")
+drive = GoogleDrive(gauth)
 
-    # تمرير التوكن إلى PyDrive2
-    creds = AccessTokenCredentials(access_token, "my-user-agent/1.0")
-    gauth = GoogleAuth()
-    gauth.credentials = creds
-    return GoogleDrive(gauth)
-    
 # =============================
 # تحميل سجل الملفات السابقة
 # =============================
 if os.path.exists(log_file):
-    with open(log_file, "r", encoding="utf-8") as f:
-        uploaded_files = set(line.split(" | ")[0] for line in f.read().splitlines())
+    with open(log_file, "r") as f:
+        uploaded_files = set(f.read().splitlines())
 else:
     uploaded_files = set()
 
 # =============================
-# استخراج طول الفيديو (ffprobe)
-# =============================
-def get_duration(file_path):
-    try:
-        result = subprocess.run(
-            ["ffprobe", "-v", "error", "-show_entries",
-             "format=duration", "-of",
-             "default=noprint_wrappers=1:nokey=1", file_path],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT
-        )
-        return float(result.stdout)
-    except Exception:
-        return 0.0
-
-# =============================
 # دالة رفع الفيديو إلى Drive
 # =============================
-def upload_to_drive(file_path, file_name, duration):
+def upload_to_drive(file_path, file_name):
     gfile = drive.CreateFile({"parents": [{"id": gdrive_folder_id}], "title": file_name})
     gfile.SetContentFile(file_path)
     gfile.Upload()
-    print(f"✅ Uploaded: {file_name} ({duration:.1f}s)")
+    print(f"Uploaded: {file_name}")
     uploaded_files.add(file_name)
-    with open(log_file, "a", encoding="utf-8") as f:
-        f.write(f"{file_name} | {duration:.1f}s | {datetime.now()}\n")
+    with open(log_file, "a") as f:
+        f.write(file_name + "\n")
 
 # =============================
 # تنفيذ Telegram Client
@@ -94,37 +62,22 @@ async def main():
     await client.start()
     channel = await client.get_entity(channel_username)
 
-    uploaded_count = 0
-    async for message in client.iter_messages(channel, limit=200):  # جلب 200 رسالة مثلاً
-        if uploaded_count >= max_uploads:
-            break
-
+    async for message in client.iter_messages(channel, limit=50):
         if message.video:
-            file_name = message.file.name or f"{message.id}.mp4"
+            file_name = message.file.name
             if file_name in uploaded_files:
-                print(f"⏭️ Already uploaded: {file_name}")
+                print(f"Already uploaded: {file_name}")
                 continue
 
-            temp_path = f"temp_{message.id}.mp4"
-            try:
-                await message.download_media(file=temp_path)
-                duration = get_duration(temp_path)
-
-                if duration < 60:  # أقل من دقيقة
-                    upload_to_drive(temp_path, file_name, duration)
-                    uploaded_count += 1
-                else:
-                    print(f"⏭️ Skipping (long video {duration:.1f}s): {file_name}")
-
-                if uploaded_count >= max_uploads:
-                    break
-            except Exception as e:
-                print(f"⚠️ Error processing {file_name}: {e}")
-            finally:
-                if os.path.exists(temp_path):
-                    os.remove(temp_path)
-
-    print(f"\n🎉 تم رفع {uploaded_count} فيديو إلى Google Drive")
+            # تحميل مؤقت للتحقق من المدة
+            temp_path = await message.download_media(file="temp_video.mp4")
+            clip = VideoFileClip(temp_path)
+            if clip.duration < 60:  # أقل من دقيقة
+                upload_to_drive(temp_path, file_name)
+            else:
+                print(f"Skipping (long video): {file_name}")
+            clip.close()
+            os.remove(temp_path)
 
 with client:
     client.loop.run_until_complete(main())
