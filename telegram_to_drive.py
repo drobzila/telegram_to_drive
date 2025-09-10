@@ -1,6 +1,6 @@
 import os
 from telethon import TelegramClient
-from moviepy.video.io.VideoFileClip import VideoFileClip
+import ffmpeg
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
 from datetime import datetime
@@ -38,7 +38,7 @@ drive = GoogleDrive(gauth)
 # تحميل سجل الملفات السابقة
 # =============================
 if os.path.exists(log_file):
-    with open(log_file, "r") as f:
+    with open(log_file, "r", encoding="utf-8") as f:
         uploaded_files = set(line.split(" | ")[0] for line in f.read().splitlines())
 else:
     uploaded_files = set()
@@ -78,8 +78,11 @@ async def main():
             temp_path = f"temp_{message.id}.mp4"
             try:
                 await message.download_media(file=temp_path)
-                clip = VideoFileClip(temp_path)
-                duration = clip.duration
+
+                # استخراج مدة الفيديو باستخدام ffmpeg
+                probe = ffmpeg.probe(temp_path)
+                duration = float(probe["format"]["duration"])
+
                 if duration < 60:  # أقل من دقيقة
                     upload_to_drive(temp_path, file_name, duration)
                     uploaded_count += 1
@@ -87,7 +90,7 @@ async def main():
                         break
                 else:
                     print(f"Skipping (long video {duration:.1f}s): {file_name}")
-                clip.close()
+
             except Exception as e:
                 print(f"Error processing {file_name}: {e}")
             finally:
