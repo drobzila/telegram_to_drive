@@ -1,45 +1,29 @@
 name: Telegram to Google Drive
 
 on:
+  workflow_dispatch:   # تشغيل يدوي
   schedule:
-    - cron: '0 12 * * *'  # كل يوم على الساعة 12:00 UTC
-  workflow_dispatch:
+    - cron: "0 12 * * *"   # تشغيل يومي 12:00 UTC (غيّر التوقيت إذا تحب)
 
 jobs:
-  telegram-upload:
+  run-script:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repo
+        uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
-
-      - name: Restore Telegram session
-        run: echo "${{ secrets.TELEGRAM_SESSION }}" | base64 -d > telegram.session
+          python-version: "3.10"
 
       - name: Install dependencies
         run: |
-          echo "📂 Current path:"
-          pwd
-          echo "📂 Files in repo:"
-          ls -R
-          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
-          echo "✅ Checking if moviepy is installed:"
-          pip show moviepy || echo "moviepy not found"
-          pip list | grep moviepy || echo "moviepy missing from list"
 
-      - name: Debug Python paths
-        run: |
-          python -c "import sys; print('🔎 sys.path:', sys.path)"
-          python -c "import importlib.util; print('🔎 moviepy spec:', importlib.util.find_spec('moviepy'))"
-          python -c "import importlib.util; print('🔎 moviepy.editor spec:', importlib.util.find_spec('moviepy.editor'))"
-
-      - name: Run Telegram to Drive
-        run: python telegram_to_drive.py
+      - name: Run script
         env:
           TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
           TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
@@ -47,4 +31,5 @@ jobs:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
-          GOOGLE_FOLDER_ID: ${{ secrets.GOOGLE_FOLDER }}
+          GOOGLE_FOLDER_ID: ${{ secrets.GOOGLE_FOLDER_ID }}
+        run: python telegram_to_drive.py
