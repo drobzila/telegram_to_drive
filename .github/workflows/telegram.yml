@@ -1,0 +1,29 @@
+name: Test Telegram Session
+
+on:
+  workflow_dispatch:  # يسمح بتشغيل يدويًا من GitHub
+
+jobs:
+  telegram-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: pip install telethon
+
+    - name: Restore Telegram session
+      run: |
+        echo "${{ secrets.TELEGRAM_SESSION }}" | base64 -d > telegram.session
+
+    - name: Run Telegram script
+      env:
+        TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+        TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+      run: python test_session.py
